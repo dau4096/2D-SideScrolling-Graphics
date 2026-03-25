@@ -570,7 +570,14 @@ void prepareOpenGL() {
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 #endif
-	GLIndex::genericVAO = getEmptyVAO();	
+	GLIndex::genericVAO = getEmptyVAO();
+
+
+	GLIndex::stageShader = createShaderProgram("stage/stage.frag", "exct/screenspace.vert");
+	GLIndex::lightingShader = createComputeShader("lighting/lighting.comp");
+	GLIndex::postProcessingShader = createShaderProgram("exct/postprocessing.frag", "exct/screenspace.vert");
+	GLIndex::displayShader = createShaderProgram("exct/display.frag", "exct/screenspace.vert");
+
 
 	//Debug settings
 	glEnable(GL_DEBUG_OUTPUT);
@@ -602,7 +609,19 @@ inline void renderingGeneric(const std::string& shaderName="") {
 
 
 void draw() {
-	
+	const glm::uvec3 LIGHTING_LOCAL_SIZE = glm::uvec3(32, 1, 1);
+	glUseProgram(GLIndex::lightingShader)
+	glDispatchCompute(
+		(currentRenderResolution.x + RAYCASTING_LOCAL_SIZE.x - 1) / RAYCASTING_LOCAL_SIZE.x,
+		(currentRenderResolution.y + RAYCASTING_LOCAL_SIZE.y - 1) / RAYCASTING_LOCAL_SIZE.y,
+		(numLights + RAYCASTING_LOCAL_SIZE.z - 1) / RAYCASTING_LOCAL_SIZE.z
+	);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	glUseProgram(GLIndex::postProcessingShader);
+	renderingGeneric("postProcessing");
+	glUseProgram(GLIndex::displayShader);
+	renderingGeneric("display");
 }
 
 
